@@ -166,3 +166,12 @@ sam_vit_h_4b8939.pth
 *.npy
 *.xlsx
 time.txt
+FastSAM-x.pt
+predictor.py
+.vs/ProjectSettings.json
+.vs/slnx.sqlite
+.vs/VSWorkspaceState.json
+.vs/SAM-FunML-sp24/FileContentIndex/8dc96311-50f4-4046-a261-086847155e14.vsidx
+.vs/SAM-FunML-sp24/FileContentIndex/701250ee-e32f-4866-a094-be22cdbede15.vsidx
+.vs/SAM-FunML-sp24/v17/.wsuo
+.vs/SAM-FunML-sp24/v17/DocumentLayout.json
