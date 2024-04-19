@@ -168,7 +168,7 @@ while c < MAX_SAMPLES:
                     prompt_process = FastSAMPrompt(image, results, device=DEVICE)
                     masks = prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
                     mask = masks[0].masks.data
-
+                    mask = mask.numpy()
                     ax[2].clear()
                     ax[2].imshow(image)
                     show_mask(mask, ax[2])
