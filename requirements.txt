@@ -8,3 +8,6 @@ segment_anything==1.0
 torch==2.0.1
 torchvision
 segment_anything
+pypi-install
+ultralytics
+git+https://github.com/ultralytics/CLIP.git

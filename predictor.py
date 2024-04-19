@@ -1,3 +1,8 @@
+#prictor.py
+
+from ultralytics import FastSAM
+from ultralytics.models.fastsam import FastSAMPrompt 
+
 import sys
 import cv2
 import statistics
@@ -12,6 +17,7 @@ from config import *
 from helpers import *
 import workbook
 
+
 sys.path.append("..")
 
 try:
@@ -22,10 +28,13 @@ except:
 plt.rcParams['keymap.grid'].remove('g')
 plt.rcParams['keymap.home'].remove('r')
 
-sam = sam_model_registry[MODEL_TYPE](checkpoint=SAM_CHECKPOINT)
-sam.to(device=DEVICE)
 
-predictor = SamPredictor(sam)
+fast_sam = FastSAM()
+fast_sam.to(device=DEVICE)  
+
+                  
+
+
 
 names  = np.load("samples.npy", allow_pickle=True)
 labels = np.load("labels.npy", allow_pickle=True)
@@ -71,7 +80,7 @@ while c < MAX_SAMPLES:
 
     if len(image.shape) == 2:
         image = cv2.cvtColor((np.array(((image + 1) / 2) * 255, dtype='uint8')), cv2.COLOR_GRAY2RGB)
-    predictor.set_image(image)
+       
     
 
     while True:
@@ -146,13 +155,19 @@ while c < MAX_SAMPLES:
                     input_point = np.concatenate((green, red))
                     input_label = np.concatenate(([1] * len(green), [0] * len(red)))
 
-                    masks, scores, logits = predictor.predict(
-                        point_coords=input_point,
-                        point_labels=input_label,
-                        multimask_output=True,
-                    )
 
-                    mask = masks[0]
+                    FastSAM_input_point = input_point.tolist()
+                    FastSAM_input_label = input_label.tolist()
+                    results = fast_sam(
+                                source=image,
+                                device=DEVICE,
+                                retina_masks=True,
+                                imgsz=1024,
+                                conf=0.5,
+                                iou=0.6)
+                    prompt_process = FastSAMPrompt(image, results, device=DEVICE)
+                    masks = prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
+                    mask = masks[0].masks.data
 
                     ax[2].clear()
                     ax[2].imshow(image)
