@@ -40,7 +40,7 @@ while c < config.MAX_SAMPLES:
     ant.run()
  
 
-    workbook.save_metrics(c, ant.score, ant.ng, ant.nr, ant.stdx, ant.stdy, ant.gp, ant.rp, ant.msk, ant.round)
+    workbook.save_metrics(c, ant.score, ant.ng, ant.nr, ant.stdx, ant.stdy, ant.gp, ant.rp, ant.msk, ant.attempt)
     workbook.update_survey()
 
     contin = input("do u want to continue? press y if you want to continue or anyting otherwise ")

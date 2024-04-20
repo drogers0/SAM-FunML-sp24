@@ -26,7 +26,7 @@ class SampleAnnotator:
         self.co     = 0
         self.bs     = 0
         self.score  = []
-        self.round  = [0, 0]
+        self.attempt  = [0, 0]
         self.stdx   = []
         self.stdy   = []
         self.ng     = []
@@ -49,6 +49,100 @@ class SampleAnnotator:
             self.annotate_sample()
             break
 
+    def perform_sam(self):
+        print("green:", self.green)
+        print("red:", self.red)
+
+        input_point = np.concatenate((self.green, self.red))
+        input_label = np.concatenate(([1] * len(self.green), [0] * len(self.red)))
+
+
+        FastSAM_input_point = input_point.tolist()
+        FastSAM_input_label = input_label.tolist()
+        results = fast_sam(
+                    source=self.image,
+                    device=config.DEVICE,
+                    retina_masks=True,
+                    imgsz=1024,
+                    conf=0.5,
+                    iou=0.6)
+        prompt_process = FastSAMPrompt(self.image, results, device=config.DEVICE)
+        masks = prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
+        mask = masks[0].masks.data
+        mask = mask.numpy()
+
+        self.ax[2].clear()
+        self.ax[2].imshow(self.image)
+        helpers.show_mask(mask, self.ax[2])
+        intersection = (mask & self.label).sum()
+        union = (mask | self.label).sum()
+        if intersection == 0:
+            s = 0
+        else:
+            s = intersection / union
+
+        helpers.show_points(input_point, input_label, self.ax[2], marker_size = self.current_star_size)
+        msg = ""
+
+        if len(self.score[self.attempt[0]:]) == 0:
+            maxx = 0
+        else:
+            maxx = max(self.score[self.attempt[0]:])
+            print("maxx",maxx)
+        self.score.append(s)
+        self.gp.append(np.multiply(self.green, 1))
+
+        self.rp.append(np.multiply(self.red, 1))
+        self.ng.append(len(self.greenx))
+        self.nr.append(len(self.redx))
+        grx = np.concatenate([self.greenx, self.redx])
+        gry = np.concatenate([self.greeny, self.redy])
+
+        self.stdx.append(statistics.pstdev(grx.astype(int).tolist()))
+        self.stdy.append(statistics.pstdev(gry.astype(int).tolist()))
+        print("up count", self.count)
+        if maxx >= s:
+            print("inside",self.count)
+            if self.count >= 10:
+                self.lessfive += 1
+            else:
+                self.count += 1
+        elif maxx < s:
+
+            self.count = 1
+        if self.lessfive == 1:
+            maxx = 0
+            self.count=1
+            self.attempt[0] = len(np.array(self.score))
+            msg = " (attempt 2) "
+        plt.title(f"Score: {(intersection / union):.3f}" + msg, fontsize=13)
+        ## saving masks, scores, points and other stats: 
+        self.msk.append(np.multiply(mask, 5))
+        print("less than best score", self.lessfive)
+        print("scores:", self.score)
+        if self.lessfive == 1:
+            self.lessfive += 1
+            for line in self.ax[0].lines:
+                line.set_data([], [])
+            for line in self.ax[1].lines:
+                line.set_data([], [])
+            self.green = []
+            self.red = []
+            self.greenx = []
+            self.redx = []
+            self.greeny = []
+            self.redy = []
+            plt.draw()
+            self.ax[2].clear()
+            self.ax[2].imshow(self.image)
+            helpers.show_mask(mask, self.ax[2])
+            self.count = 1
+            print("below count", self.count)
+            plt.title("No better score is achieved in the last 5 attempts. Start attempt 2 from scratch")
+        elif self.lessfive == 3:
+            self.attempt[1]=len(self.score)-self.attempt[0]
+            print("The window closed because you did not achieve a better score after 5 consecutive clicks in the 2nd attempt")
+            plt.close()
 
     def onclose(self, event):
         self.fig.canvas.stop_event_loop()
@@ -56,128 +150,36 @@ class SampleAnnotator:
 
     def onclick(self, event):
 
-        if event.xdata is not None and event.ydata is not None:
+        if event.xdata is None or event.ydata is None:
+            return
 
-            x, y = int(event.xdata), int(event.ydata)
-            print(not x)
-            print(not y)
+        x, y = int(event.xdata), int(event.ydata)
 
-            if event.button is MouseButton.LEFT:
-                if self.current_color == 'green':
+        if event.button is MouseButton.LEFT:
+            if self.current_color == 'green':
 
-                    self.green.append((x, y))
-                    self.greenx.append(x)
+                self.green.append((x, y))
+                self.greenx.append(x)
 
-                    self.greeny.append(y)
-                    self.ax[0].plot(x, y, 'go', markersize=self.current_green_red_dot_size)
-                    self.ax[1].plot(x, y, 'go', markersize=self.current_green_red_dot_size)
-                    plt.draw()
+                self.greeny.append(y)
+                self.ax[0].plot(x, y, 'go', markersize=self.current_green_red_dot_size)
+                self.ax[1].plot(x, y, 'go', markersize=self.current_green_red_dot_size)
+                plt.draw()
 
-                else:
-                    self.red.append((x, y))
-                    self.redx.append(x)
+            else:
+                self.red.append((x, y))
+                self.redx.append(x)
 
-                    self.redy.append(y)
-                    self.ax[0].plot(x, y, 'ro', markersize=self.current_green_red_dot_size)
-                    self.ax[1].plot(x, y, 'ro', markersize=self.current_green_red_dot_size)
-                    plt.draw()
+                self.redy.append(y)
+                self.ax[0].plot(x, y, 'ro', markersize=self.current_green_red_dot_size)
+                self.ax[1].plot(x, y, 'ro', markersize=self.current_green_red_dot_size)
+                plt.draw()
 
-            elif event.button is MouseButton.RIGHT:
-                self.delete_point(x, y)
+        elif event.button is MouseButton.RIGHT:
+            self.delete_point(x, y)
 
-            if self.green and self.red:
-                print("green:", self.green)
-                print("red:", self.red)
-
-                input_point = np.concatenate((self.green, self.red))
-                input_label = np.concatenate(([1] * len(self.green), [0] * len(self.red)))
-
-
-                FastSAM_input_point = input_point.tolist()
-                FastSAM_input_label = input_label.tolist()
-                results = fast_sam(
-                            source=self.image,
-                            device=config.DEVICE,
-                            retina_masks=True,
-                            imgsz=1024,
-                            conf=0.5,
-                            iou=0.6)
-                prompt_process = FastSAMPrompt(self.image, results, device=config.DEVICE)
-                masks = prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
-                mask = masks[0].masks.data
-                mask = mask.numpy()
-                self.ax[2].clear()
-                self.ax[2].imshow(self.image)
-                helpers.show_mask(mask, self.ax[2])
-                intersection = (mask & self.label).sum()
-                union = (mask | self.label).sum()
-                if intersection == 0:
-                    s = 0
-                else:
-                    s = intersection / union
-
-                helpers.show_points(input_point, input_label, self.ax[2], marker_size = self.current_star_size)
-                msg = ""
-
-                if len(self.score[self.round[0]:]) == 0:
-                    maxx = 0
-                else:
-                    maxx = max(self.score[self.round[0]:])
-                    print("maxx",maxx)
-                self.score.append(s)
-                self.gp.append(np.multiply(self.green, 1))
-
-                self.rp.append(np.multiply(self.red, 1))
-                self.ng.append(len(self.greenx))
-                self.nr.append(len(self.redx))
-                grx = np.concatenate([self.greenx, self.redx])
-                gry = np.concatenate([self.greeny, self.redy])
-
-                self.stdx.append(statistics.pstdev(grx.astype(int).tolist()))
-                self.stdy.append(statistics.pstdev(gry.astype(int).tolist()))
-                print("up count", self.count)
-                if maxx >= s:
-                    print("inside",self.count)
-                    if self.count >= 10:
-                        self.lessfive += 1
-                    else:
-                        self.count += 1
-                elif maxx < s:
-
-                    self.count = 1
-                if self.lessfive == 1:
-                    maxx = 0
-                    self.count=1
-                    self.round[0] = len(np.array(self.score))
-                    msg = " (round 2) "
-                plt.title(f"Score: {(intersection / union):.3f}" + msg, fontsize=13)
-                ## saving masks, scores, points and other stats: 
-                self.msk.append(np.multiply(mask, 5))
-                print("less than best score", self.lessfive)
-                print("scores:", self.score)
-                if self.lessfive == 1:
-                    self.lessfive += 1
-                    for line in self.ax[0].lines:
-                        line.set_data([], [])
-                    for line in self.ax[1].lines:
-                        line.set_data([], [])
-                    self.green = []
-                    self.red = []
-                    self.greenx = []
-                    self.redx = []
-                    self.greeny = []
-                    self.redy = []
-                    plt.draw()
-                    self.ax[2].clear()
-                    self.ax[2].imshow(self.image)
-                    helpers.show_mask(mask, self.ax[2])
-                    self.count = 1
-                    print("below count", self.count)
-                    plt.title("No better score is achieved in the last 5 attempts. Start round 2 from scratch")
-                elif self.lessfive == 3:
-                    self.round[1]=len(self.score)-self.round[0]
-                    print("The window closed because you did not achieve a better score after 5 consecutive clicks in the 2nd round")
-                    plt.close()
+        if self.green and self.red:
+            self.perform_sam()
 
     def toggle_color(self, event):
         if event.key == 'g':
