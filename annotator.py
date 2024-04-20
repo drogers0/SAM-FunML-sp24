@@ -179,6 +179,7 @@ class SampleAnnotator:
             self.delete_point(x, y)
 
         if self.green and self.red:
+            plt.pause(0.1) #give time for the plot to update
             self.perform_sam()
 
     def toggle_color(self, event):
