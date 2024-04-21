@@ -25,3 +25,16 @@ def closetn(node, nodes):
     deltas = nodes - node
     dist_2 = np.einsum('ij,ij->i', deltas, deltas)
     return np.argmin(dist_2)
+
+def downsample(image):
+    width, height = image.shape[-2:] #width, height of the original image
+    downsample_image = cv2.pyrDown(image) # cv2 downsample function
+    d_width, d_height = downsample_image.shape[-2:] # width, height of the downsampled image
+
+    # Zero-pad downsampled image
+    leftright = width - d_width
+    updown = height - d_height
+    padded_image = torchvision.transforms.Pad((leftright/2, updown/2, leftright/2, updown/2)) # left, top, right, bottom
+    result = padded_image(downsample_image)
+    result = result.resize((width, height)) #resize to the original image
+    return result
