@@ -11,9 +11,32 @@ from matplotlib.backend_bases import MouseButton
 import helpers
 import config
 
+from flask import Flask
+from flask_caching import Cache
+cache_config = {
+    "DEBUG": True,          # some Flask specific configs
+    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+}
+app = Flask(__name__)
+# tell Flask to use the above defined config
+app.config.from_mapping(cache_config)
+cache = Cache(app)
+
+
 fast_sam = FastSAM()
 fast_sam.to(device=config.DEVICE)  
 
+@cache.memoize(0)
+def get_mask_results(image):
+    results = fast_sam(
+        source=image,
+        device=config.DEVICE,
+        retina_masks=True,
+        imgsz=1024,
+        conf=0.5,
+        iou=0.6
+    )
+    return results
 class SampleAnnotator:
     def __init__(self, c, labels, names):
         self.c      = c
@@ -44,14 +67,6 @@ class SampleAnnotator:
         if len(self.image.shape) == 2:
             self.image = cv2.cvtColor((np.array(((self.image + 1) / 2) * 255, dtype='uint8')), cv2.COLOR_GRAY2RGB)
 
-        results = fast_sam(
-                    source=self.image,
-                    device=config.DEVICE,
-                    retina_masks=True,
-                    imgsz=1024,
-                    conf=0.5,
-                    iou=0.6)
-        self.prompt_process = FastSAMPrompt(self.image, results, device=config.DEVICE)
 
     def run(self):
         while True:
@@ -69,7 +84,10 @@ class SampleAnnotator:
         FastSAM_input_point = input_point.tolist()
         FastSAM_input_label = input_label.tolist()
 
-        masks = self.prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
+
+        results = get_mask_results(self.image)
+        prompt_process = FastSAMPrompt(self.image, results, device=config.DEVICE)
+        masks = prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
         mask = masks[0].masks.data
         mask = mask.numpy()
 
