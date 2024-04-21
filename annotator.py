@@ -71,6 +71,7 @@ class SampleAnnotator:
             self.image = cv2.cvtColor((np.array(((self.image + 1) / 2) * 255, dtype='uint8')), cv2.COLOR_GRAY2RGB)
         if config.DOWNSAMPLE:
             self.image = helpers.downsample(self.image)
+            self.label = helpers.downsample(self.label, True)
 
     def run(self):
         while True:

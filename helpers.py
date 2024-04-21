@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import cv2
 import torchvision
 from config import *
+from PIL import Image
+
 
 
 def show_mask(mask, ax, random_color=False):
@@ -29,15 +31,21 @@ def closetn(node, nodes):
     dist_2 = np.einsum('ij,ij->i', deltas, deltas)
     return np.argmin(dist_2)
 
-def downsample(image):
-    width, height = image.shape[-2:] #width, height of the original image
-    downsample_image = cv2.pyrDown(image) # cv2 downsample function
+def downsample(image, ground_truth=False):
+    if ground_truth:
+        image = cv2.cvtColor((np.array(((image + 1) / 2) * 255, dtype='uint8')), cv2.COLOR_GRAY2RGB)
+    height, width = image.shape[:2] #width, height of the original image
+
+    downsample_image = cv2.pyrDown(image, dstsize=(width // 2, height // 2)) # cv2 downsample function
     d_width, d_height = downsample_image.shape[-2:] # width, height of the downsampled image
 
     # Zero-pad downsampled image
     leftright = width - d_width
     updown = height - d_height
-    padded_image = torchvision.transforms.Pad((leftright/2, updown/2, leftright/2, updown/2)) # left, top, right, bottom
-    result = padded_image(downsample_image)
+    padded_image = torchvision.transforms.Pad((leftright//2, updown//2, leftright//2, updown//2)) # left, top, right, bottom
+    result = padded_image(Image.fromarray(downsample_image))
     result = result.resize((width, height)) #resize to the original image
+    result = np.asarray(result)
+    if ground_truth:
+        result = result[:,:,0] == 255
     return result
