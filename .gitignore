@@ -170,3 +170,4 @@ FastSAM-x.pt
 .vs/*
 ReadMe_FASTSAM.txt
 tmp*
+cache/*

@@ -14,8 +14,9 @@ import config
 from flask import Flask
 from flask_caching import Cache
 cache_config = {
-    "DEBUG": True,          # some Flask specific configs
-    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+    "DEBUG": True,                    # some Flask specific configs
+    "CACHE_TYPE": "FileSystemCache",  # Flask-Caching related configs
+    "CACHE_DIR": "cache",             # the path where the cache will be stored
 }
 app = Flask(__name__)
 # tell Flask to use the above defined config
@@ -37,8 +38,10 @@ def get_mask_results(image):
         iou=0.6
     )
     return results
+
 class SampleAnnotator:
     def __init__(self, c, labels, names):
+        cache.clear() #fix strange bug with masks being carried over
         self.c      = c
         self.msk    = []
         self.gp     = []
@@ -66,7 +69,8 @@ class SampleAnnotator:
 
         if len(self.image.shape) == 2:
             self.image = cv2.cvtColor((np.array(((self.image + 1) / 2) * 255, dtype='uint8')), cv2.COLOR_GRAY2RGB)
-
+        if config.DOWNSAMPLE:
+            self.image = helpers.downsample(self.image)
 
     def run(self):
         while True:
