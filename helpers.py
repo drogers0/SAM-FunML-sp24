@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
+import torchvision
 from config import *
+
 
 def show_mask(mask, ax, random_color=False):
     if random_color:
