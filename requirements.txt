@@ -11,3 +11,4 @@ segment_anything
 pypi-install
 ultralytics
 git+https://github.com/ultralytics/CLIP.git
+Flask-Caching
