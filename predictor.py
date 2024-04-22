@@ -40,6 +40,13 @@ else:
 ## start looping through samples: 
 while c < config.MAX_SAMPLES:
     workbook.update_sample(c)
+    
+    if config.CACHE_MASKS:
+        ant = annotator.SampleAnnotator(c, labels, names)
+        print(c)
+        c += 1
+        continue
+
     ant = annotator.SampleAnnotator(c, labels, names)
     ant.run()
  

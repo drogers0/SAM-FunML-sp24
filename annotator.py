@@ -31,7 +31,6 @@ else:
     from segment_anything import sam_model_registry, SamPredictor
     sam = sam_model_registry[config.MODEL_TYPE](checkpoint=config.SAM_CHECKPOINT)
     sam.to(device=config.DEVICE)
-    predictor = SamPredictor(sam)
 
 @cache.memoize(0)
 def get_mask_results(image):
@@ -44,10 +43,16 @@ def get_mask_results(image):
         iou=0.6
     )
     return results
+@cache.memoize(0)
+def set_predictor(image):
+    predictor = SamPredictor(sam)
+    predictor.set_image(image)
+    return predictor
+
 
 class SampleAnnotator:
     def __init__(self, c, labels, names):
-        cache.clear() #fix strange bug with masks being carried over
+        #cache.clear() #fix strange bug with masks being carried over
         self.c      = c
         self.msk    = []
         self.gp     = []
@@ -79,7 +84,7 @@ class SampleAnnotator:
             self.image = helpers.downsample(self.image)
             self.label = helpers.downsample(self.label, True)
         if not config.FASTSAM:
-            predictor.set_image(self.image)
+           self.predictor = set_predictor(self.image)
 
 
     def run(self):
@@ -104,7 +109,7 @@ class SampleAnnotator:
             mask = masks[0].masks.data
             mask = mask.numpy()
         else:
-            masks, scores, logits = predictor.predict(
+            masks, scores, logits = self.predictor.predict(
                 point_coords=input_point,
                 point_labels=input_label,
                 multimask_output=True,

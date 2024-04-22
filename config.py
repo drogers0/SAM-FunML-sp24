@@ -1,7 +1,8 @@
 import torch
 
-DOWNSAMPLE = False
-FASTSAM    = False
+DOWNSAMPLE  = False
+FASTSAM     = False #USE Ultralitics FastSAM instead of SAM
+CACHE_MASKS = False #Do not open interactive prompt, just initialize the masks and cache them 
 MAX_SAMPLES = 400
 MEDIUM_STAR_SIZE = 50 
 MEDIUM_GREEN_RED_DOT_SIZE = 5
