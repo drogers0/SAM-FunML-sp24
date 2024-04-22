@@ -1,5 +1,4 @@
-from ultralytics import FastSAM
-from ultralytics.models.fastsam import FastSAMPrompt 
+
 
 import cv2
 import statistics
@@ -23,9 +22,16 @@ app = Flask(__name__)
 app.config.from_mapping(cache_config)
 cache = Cache(app)
 
-
-fast_sam = FastSAM()
-fast_sam.to(device=config.DEVICE)  
+if config.FASTSAM:
+    from ultralytics import FastSAM
+    from ultralytics.models.fastsam import FastSAMPrompt 
+    fast_sam = FastSAM()
+    fast_sam.to(device=config.DEVICE)  
+else:
+    from segment_anything import sam_model_registry, SamPredictor
+    sam = sam_model_registry[config.MODEL_TYPE](checkpoint=config.SAM_CHECKPOINT)
+    sam.to(device=config.DEVICE)
+    predictor = SamPredictor(sam)
 
 @cache.memoize(0)
 def get_mask_results(image):
@@ -72,6 +78,9 @@ class SampleAnnotator:
         if config.DOWNSAMPLE:
             self.image = helpers.downsample(self.image)
             self.label = helpers.downsample(self.label, True)
+        if not config.FASTSAM:
+            predictor.set_image(self.image)
+
 
     def run(self):
         while True:
@@ -85,16 +94,22 @@ class SampleAnnotator:
         input_point = np.concatenate((self.green, self.red))
         input_label = np.concatenate(([1] * len(self.green), [0] * len(self.red)))
 
+        if config.FASTSAM:
+            FastSAM_input_point = input_point.tolist()
+            FastSAM_input_label = input_label.tolist()
 
-        FastSAM_input_point = input_point.tolist()
-        FastSAM_input_label = input_label.tolist()
-
-
-        results = get_mask_results(self.image)
-        prompt_process = FastSAMPrompt(self.image, results, device=config.DEVICE)
-        masks = prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
-        mask = masks[0].masks.data
-        mask = mask.numpy()
+            results = get_mask_results(self.image)
+            prompt_process = FastSAMPrompt(self.image, results, device=config.DEVICE)
+            masks = prompt_process.point_prompt(points=FastSAM_input_point, pointlabel=FastSAM_input_label)
+            mask = masks[0].masks.data
+            mask = mask.numpy()
+        else:
+            masks, scores, logits = predictor.predict(
+                point_coords=input_point,
+                point_labels=input_label,
+                multimask_output=True,
+            )
+            mask = masks[0]
 
         self.ax[2].clear()
         self.ax[2].imshow(self.image)
