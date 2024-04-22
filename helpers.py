@@ -37,12 +37,9 @@ def downsample(image, ground_truth=False):
     height, width = image.shape[:2] #width, height of the original image
 
     downsample_image = cv2.pyrDown(image, dstsize=(width // 2, height // 2)) # cv2 downsample function
-    d_width, d_height = downsample_image.shape[-2:] # width, height of the downsampled image
 
     # Zero-pad downsampled image
-    leftright = width - d_width
-    updown = height - d_height
-    padded_image = torchvision.transforms.Pad((leftright//2, updown//2, leftright//2, updown//2)) # left, top, right, bottom
+    padded_image = torchvision.transforms.Pad((width//4, height//4, width//4, height//4)) # left, top, right, bottom
     result = padded_image(Image.fromarray(downsample_image))
     result = result.resize((width, height)) #resize to the original image
     result = np.asarray(result)
