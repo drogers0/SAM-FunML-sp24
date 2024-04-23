@@ -1,3 +1,24 @@
+# FastSAM Project
+Modified Code Authors: Jacob Walls, David Rogers, Riley Dowdle
+ECE 8803 Q <br>
+
+# Code Organization
+**Annoator.py:** Contains the functions for handling all of the labels and points placed on the images, where FastSAM is called for processing
+
+**Config.py:** Configuration settings file
+
+**Helpers.py:** Contains helper functions that can be used across the other files, also houses the optional down sample functionality
+
+**Predictor.py:** Contains the code that does the actual prediction calculations
+
+**Requirements.txt:** Contains the version numbers needed for various imports and libraries needed
+
+**Test.py:** Contains the code needed to run the original SAM model on the data without needing to open a different repository
+
+**Workbook.py:** Contains all of the functions necessary for interacting with the Excel workbook that keeps track of points placed
+
+
+
 # SAM-prompting
 Original code: Mohammad Alotaibi <br>
 
