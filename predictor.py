@@ -61,3 +61,4 @@ while c < config.MAX_SAMPLES:
 
     c += 1
     print("Sample:", c)
+workbook.save_workbook()
